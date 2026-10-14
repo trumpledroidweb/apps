@@ -1,0 +1,42 @@
+name: Gemini AI Processor
+
+on:
+  repository_dispatch:
+    types: [run-gemini-prompt]
+
+# Limit total simultaneous active runs to 2 across the repository
+concurrency:
+  group: gemini-ai-processor
+  cancel-in-progress: false 
+
+permissions:
+  contents: write # Allows committing and pushing response files back to repo
+
+jobs:
+  process-ai:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: curl, mbstring, json
+
+      - name: Run PHP Worker Script
+        env:
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          USER_PROMPT: ${{ github.event.client_payload.prompt }}
+          USER_ID: ${{ github.event.client_payload.userid }}
+        run: php ai_request.php
+
+      - name: Commit and Push Response File
+        run: |
+          git config --global user.name "AI Automation Bot"
+          git config --global user.email "bot@users.noreply.github.com"
+          git add responses/
+          git commit -m "Auto-save AI response for user ${{ github.event.client_payload.userid }}"
+          git push || echo "No changes to push"
