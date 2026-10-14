@@ -1,0 +1,8 @@
+{
+    "user_id": "kbuvTg4mSDTE",
+    "prompt": "Hi",
+    "success": false,
+    "data": "cURL Error [56]: CONNECT tunnel failed, response 503",
+    "attempts_made": 4,
+    "timestamp": "2026-10-14T10:27:51+00:00"
+}
