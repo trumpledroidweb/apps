@@ -64,23 +64,42 @@ while ($attempt < $maxAttempts && !$success) {
         continue;
     }
 
-    // Call Google Gemini API directly using gemini-3.8-flash model endpoint
+    // Fetch fresh live proxy list & pick a random one
+    $proxyApiUrl = 'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text&protocol=http';
+    $proxyData = @file_get_contents($proxyApiUrl);
+    $proxyPool = $proxyData ? array_filter(explode("\n", str_replace("\r", "", $proxyData))) : [];
+    $selectedProxy = !empty($proxyPool) ? trim($proxyPool[array_rand($proxyPool)]) : null;
+    if ($selectedProxy && !str_starts_with($selectedProxy, 'http')) { 
+        $selectedProxy = 'http://' . $selectedProxy; 
+    }
+
+    // Corrected Google Gemini API endpoint format for gemini-3.8-flash
     $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=' . $selectedApiKey;
     $payload = [
         'contents' => [
-            ['parts' => [['text' => $prompt]]]
+            [
+                'parts' => [
+                    ['text' => $prompt]
+                ]
+            ]
         ]
     ];
 
     $ch = curl_init($apiUrl);
-    curl_setopt_array($ch, [
+    $curlOptions = [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => json_encode($payload),
         CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_TIMEOUT => 20,
+        CURLOPT_TIMEOUT => 25,
         CURLOPT_CONNECTTIMEOUT => 5,
-    ]);
+    ];
+
+    if (!empty($selectedProxy)) {
+        $curlOptions[CURLOPT_PROXY] = $selectedProxy;
+    }
+
+    curl_setopt_array($ch, $curlOptions);
 
     $response = curl_exec($ch);
     $curlError = curl_error($ch);
@@ -101,13 +120,13 @@ while ($attempt < $maxAttempts && !$success) {
         sleep(2);
         continue;
     } elseif ($httpCode === 429 || $httpCode === 503) {
-        // Backoff on rate limit or high demand and retry with another key
         sleep(4);
         continue;
     } elseif ($httpCode !== 200) {
         $replyText = "API Error [HTTP {$httpCode}]: {$response}";
     } else {
         $decoded = json_decode($response, true);
+        // Safely extract response text matching standard Gemini output structure
         $replyText = $decoded['candidates'][0]['content']['parts'][0]['text'] ?? 'Unexpected response format';
         $success = true;
     }
