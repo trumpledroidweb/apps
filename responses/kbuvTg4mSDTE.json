@@ -1,8 +1,8 @@
 {
     "user_id": "kbuvTg4mSDTE",
-    "prompt": "Hi",
+    "prompt": "How r u",
     "success": false,
-    "data": "cURL Error [56]: CONNECT tunnel failed, response 503",
+    "data": "API Error [HTTP 503]: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\n    \"status\": \"UNAVAILABLE\"\n  }\n}\n",
     "attempts_made": 4,
-    "timestamp": "2026-10-14T10:27:51+00:00"
+    "timestamp": "2026-10-14T10:33:09+00:00"
 }
