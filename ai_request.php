@@ -18,7 +18,7 @@ if (!is_dir($lockDir)) {
     mkdir($lockDir, 0777, true);
 }
 
-$maxAttempts = count($apiKeyPool) * 2; // Allow retries for 503 high demand spikes
+$maxAttempts = count($apiKeyPool) * 2;
 $attempt = 0;
 $success = false;
 $finalResult = [];
@@ -64,16 +64,7 @@ while ($attempt < $maxAttempts && !$success) {
         continue;
     }
 
-    // Fetch fresh live proxy list & pick a random one
-    $proxyApiUrl = 'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text&protocol=http';
-    $proxyData = @file_get_contents($proxyApiUrl);
-    $proxyPool = $proxyData ? array_filter(explode("\n", str_replace("\r", "", $proxyData))) : [];
-    $selectedProxy = !empty($proxyPool) ? trim($proxyPool[array_rand($proxyPool)]) : null;
-    if ($selectedProxy && !str_starts_with($selectedProxy, 'http')) { 
-        $selectedProxy = 'http://' . $selectedProxy; 
-    }
-
-    // Call Google Gemini API using gemini-3.8-flash model endpoint
+    // Call Google Gemini API directly using gemini-3.8-flash model endpoint
     $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=' . $selectedApiKey;
     $payload = [
         'contents' => [
@@ -82,21 +73,14 @@ while ($attempt < $maxAttempts && !$success) {
     ];
 
     $ch = curl_init($apiUrl);
-    $curlOptions = [
+    curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => json_encode($payload),
         CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
         CURLOPT_TIMEOUT => 20,
         CURLOPT_CONNECTTIMEOUT => 5,
-    ];
-
-    // Apply proxy if successfully fetched
-    if (!empty($selectedProxy)) {
-        $curlOptions[CURLOPT_PROXY] = $selectedProxy;
-    }
-
-    curl_setopt_array($ch, $curlOptions);
+    ]);
 
     $response = curl_exec($ch);
     $curlError = curl_error($ch);
@@ -113,13 +97,12 @@ while ($attempt < $maxAttempts && !$success) {
     fclose($keyFileHandle);
 
     if ($curlErrno !== 0) {
-        // Proxy tunnel failure -> retry with another proxy/key
         $replyText = "cURL Error [{$curlErrno}]: {$curlError}";
         sleep(2);
         continue;
     } elseif ($httpCode === 429 || $httpCode === 503) {
-        // Handle Rate Limit (429) or High Demand Server Overload (503) by backing off and rotating
-        sleep(5);
+        // Backoff on rate limit or high demand and retry with another key
+        sleep(4);
         continue;
     } elseif ($httpCode !== 200) {
         $replyText = "API Error [HTTP {$httpCode}]: {$response}";
@@ -141,7 +124,7 @@ $outputData = [
     'user_id' => $userId,
     'prompt' => $prompt,
     'success' => $success,
-    'data' => $finalResult['response'] ?? 'Execution failed or rate-limited/overloaded across all keys/proxies.',
+    'data' => $finalResult['response'] ?? 'Execution failed or rate-limited/overloaded across all keys.',
     'attempts_made' => $attempt,
     'timestamp' => date('c')
 ];
