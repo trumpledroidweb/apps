@@ -64,16 +64,7 @@ while ($attempt < $maxAttempts && !$success) {
         continue;
     }
 
-    // Fetch fresh live proxy list & pick a random one
-    $proxyApiUrl = 'https://api.proxyscrape.com/v4/free-proxy-list/get?request=display_proxies&proxy_format=protocolipport&format=text&protocol=http';
-    $proxyData = @file_get_contents($proxyApiUrl);
-    $proxyPool = $proxyData ? array_filter(explode("\n", str_replace("\r", "", $proxyData))) : [];
-    $selectedProxy = !empty($proxyPool) ? trim($proxyPool[array_rand($proxyPool)]) : 'http://fallback-proxy:8080';
-    if (!str_starts_with($selectedProxy, 'http')) { 
-        $selectedProxy = 'http://' . $selectedProxy; 
-    }
-
-    // Call Google Gemini API using gemini-3.8-flash model endpoint
+    // Call Google Gemini API directly using gemini-3.8-flash model endpoint
     $apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=' . $selectedApiKey;
     $payload = [
         'contents' => [
@@ -87,7 +78,6 @@ while ($attempt < $maxAttempts && !$success) {
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => json_encode($payload),
         CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_PROXY => $selectedProxy,
         CURLOPT_TIMEOUT => 20,
         CURLOPT_CONNECTTIMEOUT => 5,
     ]);
