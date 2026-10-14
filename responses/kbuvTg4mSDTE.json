@@ -1,8 +1,8 @@
 {
     "user_id": "kbuvTg4mSDTE",
-    "prompt": "How r u",
+    "prompt": "How are you doing",
     "success": false,
-    "data": "API Error [HTTP 503]: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\n    \"status\": \"UNAVAILABLE\"\n  }\n}\n",
-    "attempts_made": 4,
-    "timestamp": "2026-10-14T10:33:09+00:00"
+    "data": "Execution failed or rate-limited\/overloaded across all keys\/proxies.",
+    "attempts_made": 8,
+    "timestamp": "2026-10-14T10:39:28+00:00"
 }
